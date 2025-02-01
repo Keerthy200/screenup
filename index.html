@@ -18,6 +18,11 @@
             align-items: center;
             min-height: 100vh;
             flex-direction: column;
+            padding: 20px;
+        }
+        h2 {
+            color: #333;
+            margin-bottom: 30px;
         }
         .container {
             display: grid;
@@ -63,6 +68,61 @@
             display: block;
             margin: 5px 0;
         }
+
+        /* Updated styles for points, streak, and weekly boxes */
+        .points-box, .streak-box, .weekly-box {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #f7f7f7;
+            color: #333;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 10px;
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+            display: none;
+            width: 300px;
+            text-align: center;
+        }
+
+        .points-box {
+            background-color: #28a745;
+            color: white;
+        }
+        .streak-box {
+            background-color: #ffbb33;
+            color: white;
+        }
+        .weekly-box {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .points-box:hover, .streak-box:hover, .weekly-box:hover {
+            background-color: #007bff;
+            cursor: pointer;
+            color: white;
+        }
+
+        .submit-btn {
+            padding: 15px 30px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 10px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-top: 20px;
+            display: block;
+            width: 100%;
+            transition: background-color 0.3s ease;
+        }
+
+        .submit-btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
         .box:nth-child(1) { background-color: #ff5733; }
         .box:nth-child(2) { background-color: #33ff57; }
         .box:nth-child(3) { background-color: #3357ff; }
@@ -87,63 +147,222 @@
     </div>
     
     <div id="info" class="info-box"></div>
+    <button id="submit-btn" class="submit-btn" disabled onclick="showResults()">Submit</button>
+
+    <!-- Results screen -->
+    <div id="results-screen" style="display: none;">
+        <h3>Results</h3>
+        <div id="points-box" class="points-box"></div>
+        <div id="streak-box" class="streak-box"></div>
+        <div id="weekly-box" class="weekly-box"></div>
+    </div>
     
     <script>
         const data = {
             "Travel & Transportation": [
-                "Walked or cycled",
-                "Used public transport",
-                "Carpooled or rideshared",
-                "Turned off engine when idling",
-                "Used an electric/hybrid vehicle"
+                { action: "Walked or cycled", points: 1 },
+                { action: "Used public transport", points: 2 },
+                { action: "Carpooled or rideshared", points: 3 },
+                { action: "Turned off engine when idling", points: 1 },
+                { action: "Used an electric/hybrid vehicle", points: 3 }
             ],
             "Home & Energy Use": [
-                "Turned off lights and devices",
-                "Used LED bulbs",
-                "Reduced AC/heating use",
-                "Ventilated naturally"
+                { action: "Turned off lights and devices", points: 1 },
+                { action: "Used LED bulbs", points: 2 },
+                { action: "Reduced AC/heating use", points: 2 },
+                { action: "Ventilated naturally", points: 1 }
             ],
             "Food & Diet": [
-                "Ate plant-based meals",
-                "Used reusable bags and bottles",
-                "Reduced food waste",
-                "Avoided packaged drinks"
+                { action: "Ate plant-based meals", points: 3 },
+                { action: "Used reusable bags and bottles", points: 1 },
+                { action: "Reduced food waste", points: 2 },
+                { action: "Avoided packaged drinks", points: 1 }
             ],
             "Workplace & Study": [
-                "Used digital notes",
-                "Printed only when needed",
-                "Turned off devices",
-                "Used a reusable mug"
-            ],
-            "Water Conservation": [
-                "Took shorter showers",
-                "Fixed leaks or turned off taps",
-                "Used water-efficient fixtures"
+                { action: "Used digital notes", points: 1 },
+                { action: "Printed only when needed", points: 1 },
+                { action: "Turned off devices", points: 1 },
+                { action: "Used a reusable mug", points: 1 },
             ],
             "Waste Management": [
-                "Recycled",
-                "Avoided single-use plastics",
-                "Reused or upcycled items"
+                { action: "Recycled", points: 2 },
+                { action: "Avoided single-use plastics", points: 2 },
+                { action: "Reused or upcycled items", points: 3 },
+            ],
+            "Water Conservation": [
+                { action: "Took short showers", points: 2 },
+                { action: "Fixed leaks or turned off taps", points: 1 },
+                { action: "Used water-efficient fixtures", points: 2 },
             ],
             "Nature & Outdoor Activities": [
-                "Planted a tree or cared for plants",
-                "Participated in clean-ups",
-                "Used eco-friendly products"
+                { action: "Planted a tree or cared for plants", points: 3 },
+                { action: "Participated in clean-ups", points: 2 },
+                { action: "Used eco-friendly products", points: 2 },
             ],
             "Shopping & Consumption": [
-                "Bought second-hand",
-                "Chose minimal packaging",
-                "Supported sustainable brands",
-                "Used a reusable shopping bag"
+                { action: "Bought second-hand", points: 2 },
+                { action: "Chose minimal packaging", points: 2 },
+                { action: "Supported sustainable brands", points: 3 },
+                { action: "Used a reusable shopping bag", points: 1 },
             ]
         };
-        
+
+        let submitEnabled = false;
+
+        function saveSelection(category, action, isChecked) {
+            let selections = JSON.parse(localStorage.getItem("selections")) || {};
+            if (!selections[category]) {
+                selections[category] = {};
+            }
+            selections[category][action] = isChecked;
+            localStorage.setItem("selections", JSON.stringify(selections));
+
+            updatePoints();
+            updateStreak();
+            checkIfSubmitEnabled();
+        }
+
+        function checkIfSubmitEnabled() {
+            let selections = JSON.parse(localStorage.getItem("selections")) || {};
+            submitEnabled = Object.values(selections).some(actions => Object.values(actions).includes(true));
+
+            document.getElementById('submit-btn').disabled = !submitEnabled;
+        }
+
+        function loadSelections() {
+            return JSON.parse(localStorage.getItem("selections")) || {};
+        }
+
+        function updatePoints() {
+            checkDailyReset();  // Check if daily reset is needed
+            checkWeeklyReset(); // Check if weekly reset is needed
+
+            let selections = loadSelections();
+            let totalPoints = 0;
+
+            for (let category in selections) {
+                for (let action in selections[category]) {
+                    if (selections[category][action]) {
+                        totalPoints += data[category]?.find(item => item.action === action)?.points || 0;
+                    }
+                }
+            }
+
+            let pointsBox = document.getElementById("points-box");
+            pointsBox.textContent = You have earned ${totalPoints} points today!;
+            pointsBox.style.display = totalPoints > 0 ? "block" : "none";
+
+            storeDailyPoints(totalPoints);
+        }
+
+        function storeDailyPoints(dailyPoints) {
+            const today = new Date().toDateString();
+            let dailyData = JSON.parse(localStorage.getItem("dailyPoints")) || {};
+            dailyData[today] = dailyPoints;
+            localStorage.setItem("dailyPoints", JSON.stringify(dailyData));
+
+            updateWeeklyPoints();
+        }
+
+        function updateWeeklyPoints() {
+            checkWeeklyReset();  // Check if weekly reset is needed
+
+            let dailyData = JSON.parse(localStorage.getItem("dailyPoints")) || {};
+            let weeklyPoints = 0;
+
+            const today = new Date().toDateString();
+            const oneWeekAgo = new Date();
+            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+            for (let date in dailyData) {
+                if (new Date(date) >= oneWeekAgo) {
+                    weeklyPoints += dailyData[date];
+                }
+            }
+
+            let weeklyBox = document.getElementById("weekly-box");
+            weeklyBox.textContent = You have earned ${weeklyPoints} points this week!;
+            weeklyBox.style.display = weeklyPoints > 0 ? "block" : "none";
+        }
+
+        function updateStreak() {
+            let lastActionDate = localStorage.getItem("lastActionDate");
+            const today = new Date().toDateString();
+
+            if (lastActionDate !== today) {
+                localStorage.setItem("lastActionDate", today);
+                
+                let streak = localStorage.getItem("streak") || 0;
+                if (lastActionDate !== new Date(today - 1).toDateString()) {
+                    streak++;
+                }
+                localStorage.setItem("streak", streak);
+            }
+
+            let streakBox = document.getElementById("streak-box");
+            streakBox.textContent = You have a streak of ${localStorage.getItem("streak") || 0} days!;
+            streakBox.style.display = "block";
+        }
+
+        function checkDailyReset() {
+            const lastActionDate = localStorage.getItem("lastActionDate");
+            const today = new Date().toDateString();
+
+            if (lastActionDate !== today) {
+                // New day, reset points
+                localStorage.setItem("lastActionDate", today);
+                localStorage.setItem("selections", JSON.stringify({}));  // Clear previous day's selections
+                localStorage.setItem("dailyPoints", JSON.stringify({})); // Reset daily points
+                updatePoints();  // Update the UI with reset data
+            }
+        }
+
+        function checkWeeklyReset() {
+            const lastWeeklyReset = localStorage.getItem("lastWeeklyReset");
+            const today = new Date();
+            const currentDay = today.getDay();  // Get the day of the week (0: Sunday, 1: Monday, etc.)
+
+            if (currentDay === 0 && (!lastWeeklyReset || new Date(lastWeeklyReset).getDate() !== today.getDate())) {
+                // If today is Sunday, reset weekly points and store the reset date
+                localStorage.setItem("weeklyPoints", 0);
+                localStorage.setItem("lastWeeklyReset", today.toDateString());
+                updateWeeklyPoints();  // Update the UI with reset weekly points
+            }
+        }
+
         function showInfo(category) {
             const infoBox = document.getElementById('info');
-            infoBox.innerHTML = <h3>${category}</h3> +
-                data[category].map(item => <label><input type='checkbox'> ${item}</label>).join('');
+            const selections = loadSelections();
+
+            infoBox.innerHTML = `
+                <h3>${category}</h3>
+                ${data[category].map(item => {
+                    const checked = selections[category]?.[item.action] ? "checked" : "";
+                    return `
+                        <label>
+                            <input type='checkbox' ${checked} onchange="saveSelection('${category}', '${item.action}', this.checked)">
+                            ${item.action} (${item.points} pts)
+                        </label>
+                    `;
+                }).join('')}
+            `;
+            
             infoBox.style.display = 'block';
         }
+
+        function showResults() {
+            document.getElementById("results-screen").style.display = "block";
+            document.getElementById("info").style.display = "none";
+            updatePoints();
+            updateStreak();
+            updateWeeklyPoints();
+        }
+
+        checkDailyReset();
+        checkWeeklyReset();
+        updatePoints();
+        updateStreak();
+        updateWeeklyPoints();
     </script>
 </body>
 </html>
